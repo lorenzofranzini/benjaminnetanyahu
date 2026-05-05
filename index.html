@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Pong Game</title>
+    <style>
+        /* CSS - L'estetica del gioco */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #222;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+
+        canvas {
+            border: 4px solid white;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            background-color: #000;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui">
+        <h1>PONG</h1>
+        <p>Usa il mouse o il touch per muovere la racchetta</p>
+    </div>
+
+    <canvas id="pongCanvas"></canvas>
+
+    <script>
+        // JS - La logica del gioco
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Impostazioni dimensioni
+        canvas.width = 800;
+        canvas.height = 400;
+
+        // Definizione degli oggetti di gioco
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 10,
+            speed: 5,
+            velocityX: 5,
+            velocityY: 5,
+            color: "WHITE"
+        };
+
+        const user = {
+            x: 0,
+            y: canvas.height / 2 - 50,
+            width: 10,
+            height: 100,
+            score: 0,
+            color: "WHITE"
+        };
+
+        const com = {
+            x: canvas.width - 10,
+            y: canvas.height / 2 - 50,
+            width: 10,
+            height: 100,
+            score: 0,
+            color: "WHITE"
+        };
+
+        const net = {
+            x: canvas.width / 2 - 1,
+            y: 0,
+            width: 2,
+            height: 10,
+            color: "WHITE"
+        };
+
+        // Funzione per disegnare rettangoli
+        function drawRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        }
+
+        // Funzione per disegnare cerchi
+        function drawArc(x, y, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Funzione per disegnare il testo
+        function drawText(text, x, y) {
+            ctx.fillStyle = "#FFF";
+            ctx.font = "45px Courier New";
+            ctx.fillText(text, x, y);
+        }
+
+        // Controllo della racchetta utente (Mouse)
+        canvas.addEventListener("mousemove", getMousePos);
+        function getMousePos(evt) {
+            let rect = canvas.getBoundingClientRect();
+            user.y = evt.clientY - rect.top - user.height / 2;
+        }
+
+        // Reset della palla
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.velocityX = -ball.velocityX;
+            ball.speed = 5;
+        }
+
+        // Rilevamento collisioni
+        function collision(b, p) {
+            p.top = p.y;
+            p.bottom = p.y + p.height;
+            p.left = p.x;
+            p.right = p.x + p.width;
+
+            b.top = b.y - b.radius;
+            b.bottom = b.y + b.radius;
+            b.left = b.x - b.radius;
+            b.right = b.x + b.radius;
+
+            return p.left < b.right && p.top < b.bottom && p.right > b.left && p.bottom > b.top;
+        }
+
+        // Aggiornamento logica
+        function update() {
+            // Aggiorna punteggio
+            if (ball.x - ball.radius < 0) {
+                com.score++;
+                resetBall();
+            } else if (ball.x + ball.radius > canvas.width) {
+                user.score++;
+                resetBall();
+            }
+
+            // Movimento palla
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+
+            // IA semplice per l'avversario
+            com.y += (ball.y - (com.y + com.height / 2)) * 0.1;
+
+            // Rimbalzo bordi sopra e sotto
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.velocityY = -ball.velocityY;
+            }
+
+            // Controllo quale giocatore colpisce la palla
+            let player = (ball.x + ball.radius < canvas.width / 2) ? user : com;
+
+            if (collision(ball, player)) {
+                // Dove la palla colpisce la racchetta
+                let collidePoint = (ball.y - (player.y + player.height / 2));
+                collidePoint = collidePoint / (player.height / 2);
+
+                // Angolo di rimbalzo
+                let angleRad = (Math.PI / 4) * collidePoint;
+
+                // Direzione X
+                let direction = (ball.x + ball.radius < canvas.width / 2) ? 1 : -1;
+                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+                ball.velocityY = ball.speed * Math.sin(angleRad);
+
+                // Aumenta velocità a ogni colpo
+                ball.speed += 0.1;
+            }
+        }
+
+        // Rendering grafico
+        function render() {
+            // Pulisci il canvas
+            drawRect(0, 0, canvas.width, canvas.height, "#000");
+
+            // Disegna rete
+            for (let i = 0; i <= canvas.height; i += 15) {
+                drawRect(net.x, net.y + i, net.width, net.height, net.color);
+            }
+
+            // Disegna punteggi
+            drawText(user.score, canvas.width / 4, canvas.height / 5);
+            drawText(com.score, 3 * canvas.width / 4, canvas.height / 5);
+
+            // Disegna racchette
+            drawRect(user.x, user.y, user.width, user.height, user.color);
+            drawRect(com.x, com.y, com.width, com.height, com.color);
+
+            // Disegna palla
+            drawArc(ball.x, ball.y, ball.radius, ball.color);
+        }
+
+        function game() {
+            update();
+            render();
+        }
+
+        // Loop di gioco a 60 frame al secondo
+        let framePerSecond = 60;
+        setInterval(game, 1000 / framePerSecond);
+    </script>
+</body>
+</html>
