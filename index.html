@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -54,6 +53,10 @@ canvas.height = 400;
 const bgImage = new Image();
 bgImage.src = "https://upload.wikimedia.org/wikipedia/commons/d/d4/Flag_of_Israel.svg";
 
+// Stato del gioco
+let gameOver = false;
+let winner = "";
+
 // Palla
 const ball = {
     x: canvas.width/2,
@@ -80,7 +83,7 @@ const player2 = {
     width: 10,
     height: 100,
     score: 0,
-    speed: 7
+    speed: 25 // Aumentata la reattività della tastiera per fluidità
 };
 
 // Rete
@@ -92,12 +95,14 @@ const net = {
 
 // Controllo mouse
 canvas.addEventListener("mousemove", e => {
+    if (gameOver) return;
     let rect = canvas.getBoundingClientRect();
     user.y = e.clientY - rect.top - user.height/2;
 });
 
 // Controllo tastiera
 document.addEventListener("keydown", e => {
+    if (gameOver) return;
     if (e.key === "ArrowUp") player2.y -= player2.speed;
     if (e.key === "ArrowDown") player2.y += player2.speed;
 });
@@ -126,10 +131,12 @@ function resetBall() {
 
 // Update
 function update() {
+    if (gameOver) return;
+
     ball.x += ball.velocityX;
     ball.y += ball.velocityY;
 
-    if (ball.y < 0 || ball.y > canvas.height) {
+    if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
         ball.velocityY *= -1;
     }
 
@@ -150,12 +157,22 @@ function update() {
 
     if (ball.x < 0) {
         player2.score++;
-        resetBall();
+        if (player2.score >= 15) {
+            gameOver = true;
+            winner = "Giocatore 2 vince la partita!";
+        } else {
+            resetBall();
+        }
     }
 
     if (ball.x > canvas.width) {
         user.score++;
-        resetBall();
+        if (user.score >= 15) {
+            gameOver = true;
+            winner = "Giocatore 1 vince la partita!";
+        } else {
+            resetBall();
+        }
     }
 
     clamp();
@@ -174,9 +191,9 @@ function drawCircle(x,y,r) {
     ctx.fill();
 }
 
-function drawText(text,x,y) {
+function drawText(text,x,y,fontSize = "40px") {
     ctx.fillStyle = "white";
-    ctx.font = "40px Courier";
+    ctx.font = `${fontSize} Courier`;
     ctx.fillText(text,x,y);
 }
 
@@ -186,8 +203,15 @@ function render() {
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
     // Overlay scuro
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    if (gameOver) {
+        ctx.textAlign = "center";
+        drawText(winner, canvas.width / 2, canvas.height / 2, "30px");
+        ctx.textAlign = "left"; // Resetta l'allineamento
+        return;
+    }
 
     // Rete
     for(let i=0;i<canvas.height;i+=15){
